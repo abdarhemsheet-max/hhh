@@ -1,0 +1,103 @@
+{
+  "entities": {
+    "Transaction": {
+      "title": "Transaction",
+      "description": "A record of income or expense.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "The UID of the user who owns this transaction." },
+        "amount": { "type": "number", "description": "The transaction amount in SAR." },
+        "date": { "type": "string", "format": "date-time", "description": "The date and time of the transaction." },
+        "type": { "type": "string", "enum": ["INCOME", "EXPENSE"], "description": "The type of transaction." },
+        "category": { "type": "string", "description": "The specific category or source (e.g., food, salary)." },
+        "notes": { "type": "string", "description": "Optional notes for the transaction." },
+        "proofImage": { "type": "string", "description": "Optional URL to an image proof of the transaction." },
+        "status": { "type": "string", "enum": ["completed", "pending"], "description": "Transaction status (for pending income)." },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "amount", "date", "type", "category", "createdAt", "updatedAt"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "An external project like design or montage.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "clientName": { "type": "string" },
+        "type": { "type": "string" },
+        "amount": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "paid", "cancelled"] },
+        "deliveryDate": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "clientName", "type", "amount", "status", "deliveryDate", "createdAt", "updatedAt"]
+    },
+    "Budget": {
+      "title": "Budget",
+      "description": "Monthly budget limit for an expense category.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "category": { "type": "string" },
+        "limit": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "category", "limit", "createdAt", "updatedAt"]
+    },
+    "User": {
+      "title": "User",
+      "description": "User profile data.",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "currency": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "createdAt"]
+    },
+    "Debt": {
+      "title": "Debt",
+      "description": "Represents money owed or lent.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "personName": { "type": "string" },
+        "amount": { "type": "number" },
+        "type": { "type": "string", "enum": ["owed_to_me", "i_owe"] },
+        "status": { "type": "string", "enum": ["active", "paid"] },
+        "dueDate": { "type": "string", "format": "date" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "personName", "amount", "type", "status"]
+    }
+  },
+  "firestore": {
+    "transactions": {
+      "schema": "Transaction",
+      "description": "Collection of all transactions."
+    },
+    "projects": {
+      "schema": "Project",
+      "description": "Collection of all freelance projects."
+    },
+    "budgets": {
+      "schema": "Budget",
+      "description": "Collection of user-defined budgets."
+    },
+    "debts": {
+      "schema": "Debt",
+      "description": "Collection of user debts and loans."
+    },
+    "users": {
+      "schema": "User",
+      "description": "User profiles."
+    }
+  }
+}

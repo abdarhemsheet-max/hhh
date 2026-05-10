@@ -1,0 +1,39 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@100;200;300;400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "IBM Plex Sans Arabic", ui-sans-serif, system-ui, sans-serif;
+  --color-brand-emerald: #10b981;
+  --color-brand-turquoise: #06b6d4;
+  --color-brand-gold: #fbbf24;
+  --color-bg-main: #020617;
+}
+
+@layer base {
+  html {
+    direction: rtl;
+    font-family: var(--font-sans);
+  }
+
+  body {
+    @apply bg-bg-main text-slate-200 antialiased selection:bg-brand-emerald/30;
+    background-image: 
+      radial-gradient(at 0% 0%, hsla(161, 84%, 48%, 0.1) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, hsla(199, 89%, 48%, 0.1) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, hsla(45, 93%, 47%, 0.05) 0px, transparent 50%);
+    background-attachment: fixed;
+  }
+}
+
+.glass {
+  @apply backdrop-blur-3xl bg-white/[0.03] border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)];
+}
+
+.glass-dark {
+  @apply backdrop-blur-3xl bg-black/40 border border-white/5;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+

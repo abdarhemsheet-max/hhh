@@ -1,0 +1,136 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net (Deny all by default)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 1. Core Primitives & Helpers
+    function isSignedIn() {
+      // Mandating verified email for standard write operations
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    // 2. Entity Validation Blueprints (Anti-Update-Gap)
+    
+    function isValidTransaction(data) {
+      let requiredFields = ['userId', 'amount', 'date', 'type', 'category', 'status', 'createdAt', 'updatedAt'];
+      return data.keys().hasAll(requiredFields)
+        && data.keys().size() >= 8 && data.keys().size() <= 10
+        && data.userId == request.auth.uid
+        && data.amount is number && data.amount >= 0
+        && data.date is string && data.date.size() <= 64
+        && data.type in ['INCOME', 'EXPENSE']
+        && data.status in ['completed', 'pending']
+        && data.category is string && data.category.size() <= 100
+        && (data.notes == null || (data.notes is string && data.notes.size() <= 1000))
+        && data.createdAt == (resource == null ? request.time : resource.data.createdAt)
+        && data.updatedAt == request.time;
+    }
+
+    function isValidProject(data) {
+      let requiredFields = ['userId', 'clientName', 'amount', 'type', 'status', 'deliveryDate', 'createdAt', 'updatedAt'];
+      return data.keys().hasAll(requiredFields)
+        && data.keys().size() == 8
+        && data.userId == request.auth.uid
+        && data.clientName is string && data.clientName.size() <= 200
+        && data.amount is number && data.amount >= 0
+        && data.type is string && data.type.size() <= 100
+        && data.status in ['pending', 'paid', 'cancelled']
+        && data.deliveryDate is string && data.deliveryDate.size() <= 64
+        && data.createdAt == (resource == null ? request.time : resource.data.createdAt)
+        && data.updatedAt == request.time;
+    }
+
+    function isValidBudget(data) {
+      let requiredFields = ['userId', 'category', 'limit', 'createdAt', 'updatedAt'];
+      return data.keys().hasAll(requiredFields)
+        && data.keys().size() >= 5 && data.keys().size() <= 8
+        && data.userId == request.auth.uid
+        && data.category is string && data.category.size() <= 128
+        && data.limit is number
+        && data.createdAt == (resource == null ? request.time : resource.data.createdAt)
+        && data.updatedAt == request.time;
+    }
+
+    function isValidDebt(data) {
+      let requiredFields = ['userId', 'personName', 'amount', 'type', 'status', 'createdAt', 'updatedAt'];
+      return data.keys().hasAll(requiredFields)
+        && data.keys().size() >= 7 && data.keys().size() <= 10
+        && data.userId == request.auth.uid
+        && data.personName is string && data.personName.size() <= 200
+        && data.amount is number && data.amount >= 0
+        && data.type in ['owed_to_me', 'i_owe']
+        && data.status in ['active', 'paid']
+        && data.createdAt == (resource == null ? request.time : resource.data.createdAt)
+        && data.updatedAt == request.time;
+    }
+
+    function isValidUser(data) {
+      let requiredFields = ['email', 'createdAt', 'updatedAt'];
+      return data.keys().hasAll(requiredFields)
+        && data.keys().size() >= 3 && data.keys().size() <= 10
+        && data.email == request.auth.token.email
+        && data.createdAt == (resource == null ? request.time : resource.data.createdAt)
+        && data.updatedAt == request.time;
+    }
+
+    // 3. Collection Specific Rules (Master Gate Pattern)
+
+    match /transactions/{transactionId} {
+      allow get: if isOwner(existing().userId);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isValidTransaction(incoming());
+      allow update: if isOwner(existing().userId) && isValidTransaction(incoming())
+        && incoming().diff(existing()).affectedKeys().hasOnly(['amount', 'date', 'type', 'category', 'notes', 'status', 'updatedAt']);
+      allow delete: if isOwner(existing().userId);
+    }
+
+    match /projects/{projectId} {
+      allow get: if isOwner(existing().userId);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isValidProject(incoming());
+      allow update: if isOwner(existing().userId) && isValidProject(incoming())
+        && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'amount', 'clientName', 'deliveryDate', 'type', 'updatedAt']);
+      allow delete: if isOwner(existing().userId);
+    }
+
+    match /budgets/{budgetId} {
+      allow get: if isOwner(existing().userId);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isValidBudget(incoming());
+      allow update: if isOwner(existing().userId) && isValidBudget(incoming())
+        && incoming().diff(existing()).affectedKeys().hasOnly(['limit', 'category', 'updatedAt']);
+      allow delete: if isOwner(existing().userId);
+    }
+
+    match /debts/{debtId} {
+      allow get: if isOwner(existing().userId);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isValidDebt(incoming());
+      allow update: if isOwner(existing().userId) && isValidDebt(incoming())
+        && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'amount', 'personName', 'dueDate', 'notes', 'updatedAt']);
+      allow delete: if isOwner(existing().userId);
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(incoming());
+      allow update: if isOwner(userId) && isValidUser(incoming())
+        && !incoming().diff(existing()).affectedKeys().hasAny(['email', 'createdAt']);
+      allow delete: if false; // Users cannot delete their own profiles via client SDK
+    }
+  }
+}
